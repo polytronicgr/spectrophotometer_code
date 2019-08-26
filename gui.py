@@ -89,6 +89,8 @@ class SampleMeasWindow(tkinter.Toplevel):
         sample_row = sample_row.astype(np.int16)
         blank_row = blank_row.astype(np.int16)
         data = np.log10(blank_row / sample_row)
+        for i in range(len(data)):
+            print("blank", blank_row[i], "sample", sample_row[i], "data", data[i])
         cal = get_cal()
         plot_fig(data, "out.png", cal, data_title)
         self.destroy()
