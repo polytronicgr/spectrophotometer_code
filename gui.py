@@ -1,3 +1,5 @@
+import shutil
+import csv
 import tkinter
 import tkinter.filedialog
 
@@ -12,8 +14,9 @@ from cal import get_cal, set_cal
 from get_image import get_color_image, get_bw_image
 
 
-def plot_fig(data, out_file_loc, cal):
+def plot_fig(data, out_file_loc, cal, data_title):
     fig = plt.figure()
+    plt.title(data_title)
     xticks_locs = np.arange(0, len(data)+1, len(data)/5)
     xticks_step = (cal["max"] - cal["min"]) / 5
     xticks_labels_array = np.arange(cal["min"], cal["max"]+xticks_step, step=xticks_step)
@@ -21,11 +24,9 @@ def plot_fig(data, out_file_loc, cal):
     for label in xticks_labels_array:
         xticks_labels_list.append("%.2f" % round(label,2))
     plt.xticks(xticks_locs, labels=xticks_labels_list)
+    plt.xlabel("Wavelength (nm)")
+    plt.ylabel("Absorbance")
     plt.plot(data)
-    '''print("data start")
-    for i in range(len(data)):
-        print(i, data[i])
-    print("data end")'''
     fig.savefig(out_file_loc)
 
 
@@ -37,49 +38,64 @@ class MeasurementWindow(tkinter.Toplevel):
         self.button_for_blank = tkinter.Button(self, text="\t\t\t\tMeasure Blank\t\t\t\t",
                                                command=self.move_to_blank)
         self.button_for_blank.pack()
+        if is_cal:
+            self.data_title = "Calibration"
+        else:
+            self.withdraw()
+            self.toplevel_for_title = tkinter.Toplevel(self)
+            self.toplevel_for_title.title("Title Selection")
+            self.title_label_text = "Please enter a title for the results."
+            self.title_label = tkinter.Label(self.toplevel_for_title, text=self.title_label_text)
+            self.title_label.pack()
+            self.title_entry = tkinter.Entry(self.toplevel_for_title)
+            self.title_entry.pack()
+            self.title_button = tkinter.Button(self.toplevel_for_title, text="Continue", command=self.choose_title)
+            self.title_button.pack()
+    def choose_title(self):
+        self.data_title = self.title_entry.get()
+        self.toplevel_for_title.destroy()
+        self.deiconify()
     def move_to_blank(self):
         self.destroy()
-        BlankMeasWindow(self.is_cal)
+        BlankMeasWindow(self.is_cal, self.data_title)
 
 
 class BlankMeasWindow(tkinter.Toplevel):
-    def __init__(self, is_cal):
+    def __init__(self, is_cal, data_title):
         tkinter.Toplevel.__init__(self)
         self.title("Take a Measurement")
         self.is_cal = is_cal
+        self.data_title = data_title
         self.blank_array = get_bw_image()
         loc = get_loc()
         self.blank_row = self.blank_array[loc["y"] : loc["y"]+loc["length"], loc["x"]]
-        print("blank shape", self.blank_row.shape)
         self.title("Take a Measurement")
         self.button_for_reading = tkinter.Button(self, text="\t\tMeasure Sample\t\t",
                                                  command=self.move_to_sample)
         self.button_for_reading.pack()
     def move_to_sample(self):
         self.destroy()
-        SampleMeasWindow(self.is_cal, self.blank_row)
+        SampleMeasWindow(self.is_cal, self.blank_row, self.data_title)
 
 
 class SampleMeasWindow(tkinter.Toplevel):
-    def __init__(self, is_cal, blank_row):
+    def __init__(self, is_cal, blank_row, data_title):
         tkinter.Toplevel.__init__(self)
         self.title("Take a Measurement")
         sample_array = get_bw_image()
         loc = get_loc()
         sample_row = sample_array[loc["y"] : loc["y"]+loc["length"], loc["x"]]
-        # I don't want to subtract uint8s.
+        # I don't want to do math on uint8s.
         sample_row = sample_row.astype(np.int16)
         blank_row = blank_row.astype(np.int16)
-        data = blank_row - sample_row
-        for i in range(len(data)):
-            print(i, sample_row[i], blank_row[i], data[i])
+        data = np.log10(blank_row / sample_row)
         cal = get_cal()
-        plot_fig(data, "out.png", cal)
+        plot_fig(data, "out.png", cal, data_title)
         self.destroy()
         if is_cal:
             FinishCalibrationWindow(sample_row, blank_row)
         else:
-            FinishSampleWindow()
+            FinishSampleWindow(data)
 
 
 class FinishCalibrationWindow(tkinter.Toplevel):
@@ -129,7 +145,8 @@ class FinishCalibrationWindow(tkinter.Toplevel):
 
 
 class FinishSampleWindow(tkinter.Toplevel):
-    def __init__(self):
+    def __init__(self, data):
+        self.data = data
         tkinter.Toplevel.__init__(self)
         self.title("Take a Measurement")
         self.preview_image_tk = ImageTk.PhotoImage(file="out.png")
@@ -140,18 +157,57 @@ class FinishSampleWindow(tkinter.Toplevel):
         self.label_preview = tkinter.Label(self, text=label_preview_text)
         self.label_preview.pack()
         self.button_save_preview = tkinter.Button(self, text="Yes; Save the Result",
-                                                  command=self.save_data)
+                                                  command=self.save_result)
         self.button_save_preview.pack()
         self.button_delete_preview = tkinter.Button(self, text="No; Delete the Result",
                                                     command=self.destroy)
         self.button_delete_preview.pack()
 
 
-    def save_data(self):
-        save_dialog_title = "Select Location To Save Result"
-        sample_graph_loc = tkinter.filedialog.asksaveasfilename(title=save_dialog_title)
+    def save_result(self):
+        save_graph_title = "Select Location To Save Graph"
+        self.save_graph_toplevel = tkinter.Toplevel(self)
+        self.save_graph_toplevel.title(save_graph_title)
+        label_save_graph_text = "First, select a location to save the graph."
+        self.label_save_graph = tkinter.Label(self.save_graph_toplevel, text=label_save_graph_text)
+        self.label_save_graph.pack()
+        self.button_save_graph = tkinter.Button(self.save_graph_toplevel, text="Select Location For Graph",
+                                                command=self.save_graph)
+        self.button_save_graph.pack()
+
+
+    def save_graph(self):
+        self.save_graph_toplevel.destroy()
+        sample_graph_loc = tkinter.filedialog.asksaveasfilename()
         if sample_graph_loc != "":
             shutil.copyfile("out.png", sample_graph_loc)
+            self.save_data_intro()
+
+
+    def save_data_intro(self):
+        save_data_title = "Select Location To Save Data"
+        self.save_data_toplevel = tkinter.Toplevel(self)
+        self.save_data_toplevel.title(save_data_title)
+        label_save_data_text = "Next, select a location to save the data as a csv file."
+        self.label_save_data = tkinter.Label(self.save_data_toplevel, text=label_save_data_text)
+        self.label_save_data.pack()
+        self.button_save = tkinter.Button(self.save_data_toplevel, text="Select Location For CSV",
+                                                  command=self.save_data)
+        self.button_save.pack()
+
+
+    def save_data(self):
+        self.save_data_toplevel.destroy()
+        sample_data_loc = tkinter.filedialog.asksaveasfilename()
+        if sample_data_loc != "":
+            cal = get_cal()
+            wavelength_step = (cal["max"] - cal["min"]) / len(self.data)
+            wavelength_array = np.arange(cal["min"], cal["max"]+wavelength_step, step=wavelength_step)
+            with open(sample_data_loc, mode="w") as csv_file:
+                csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                csv_writer.writerow(["Wavelength (nm)", "Absorbance"])
+                for i in range(len(self.data)):
+                    csv_writer.writerow([wavelength_array[i], self.data[i]])
             self.destroy()
 
 
@@ -237,8 +293,8 @@ class LocateSpectrumWindow(tkinter.Toplevel):
     def complain_bad_loc_val(self):
         toplevel_for_complaint = tkinter.Toplevel(self)
         toplevel_for_complaint.title("Error: Bad Input!")
-        complaint_text = "Either a value isn't an integer, or the position goes beyond \
-                          the image size."
+        complaint_text = ("Either a value isn't an integer, or the position goes beyond "
+                          "the image size.")
         complaint_label = tkinter.Label(toplevel_for_complaint, text=complaint_text)
         complaint_label.pack()
         dismiss_button = tkinter.Button(toplevel_for_complaint,
@@ -275,12 +331,12 @@ class SpecApp(tkinter.Tk):
             if new_min < new_max:
                 set_cal(new_min, new_max)
                 self.cal = {"min" : new_min, "max" : new_max}
-                # I don't want to subtract uint8s.
+                # I don't want to do math on uint8s.
                 sample_row = sample_row.astype(np.int16)
                 blank_row = blank_row.astype(np.int16)
-                data = blank_row - sample_row
+                data = np.log10(blank_row / sample_row)
                 out_file_loc = "out.png"
-                plot_fig(data, out_file_loc, self.cal)
+                plot_fig(data, out_file_loc, self.cal, "Calibration")
             else:
                 self.complain_bad_cal_val()
         except ValueError:
@@ -290,8 +346,8 @@ class SpecApp(tkinter.Tk):
     def complain_bad_cal_val(self):
         toplevel_for_complaint = tkinter.Toplevel(self)
         toplevel_for_complaint.title("Error: Bad Input!")
-        complaint_text = "Either a value isn't a number, or the minimum is greater than \
-                          the maximum."
+        complaint_text = ("Either a value isn't a number, or the minimum is greater than "
+                          "the maximum.")
         complaint_label = tkinter.Label(toplevel_for_complaint,
                                         text=complaint_text)
         complaint_label.pack()
