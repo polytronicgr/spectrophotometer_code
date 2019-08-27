@@ -1,3 +1,12 @@
+"""This code runs a GUI for Raspberry Pi spectrophotometers that use the pi camera
+port.  It was written for Danny Evans's spectrophotometer.  To run the code, cd
+into the directory then type "python3 gui.py".  You must be in the same directory
+as the code, and you must use python 3 (not python 2).
+
+This software is licensed under the MIT license.
+
+"""
+
 import shutil
 import csv
 import tkinter
@@ -13,8 +22,31 @@ from loc import get_loc, set_loc
 from cal import get_cal, set_cal
 from get_image import get_color_image, get_bw_image
 
+__author__ = "Daniel James Evans"
+__copyright__ = "Copyright 2019, Daniel James Evans"
+__license__ = "MIT"
 
 def plot_fig(data, out_file_loc, cal, data_title):
+    """Graph data and save the result as an image.
+
+    The function takes a 1D array of y-values; it assumes that the x-values are evenly
+    spaced.
+
+    Parameters
+    ----------
+    data : 1D list or numpy array
+        It contains the y-values of the points to be graphed.  The x-values should be
+        evenly spaced points between the min and max described in cal.
+    out_file_loc : string
+        The path of where the image should be saved to.
+    cal : dictionary
+        It contains 2 keys: "min" and "max".  The values are the minimum and maximum
+        values (float or int) of the x-axis.
+    data_title : string
+        The title of the graph.
+
+    """
+
     fig = plt.figure()
     plt.title(data_title)
     xticks_locs = np.arange(0, len(data)+1, len(data)/5)
@@ -22,7 +54,7 @@ def plot_fig(data, out_file_loc, cal, data_title):
     xticks_labels_array = np.arange(cal["min"], cal["max"]+xticks_step, step=xticks_step)
     xticks_labels_list = []
     for label in xticks_labels_array:
-        xticks_labels_list.append("%.2f" % round(label,2))
+        xticks_labels_list.append("%.2f" % round(label, 2))
     plt.xticks(xticks_locs, labels=xticks_labels_list)
     plt.xlabel("Wavelength (nm)")
     plt.ylabel("Absorbance")
@@ -31,6 +63,17 @@ def plot_fig(data, out_file_loc, cal, data_title):
 
 
 class MeasurementWindow(tkinter.Toplevel):
+    """Window for beginning the process of blanking and measuring a sample.
+
+    After using a MeasurementWindow, a BlankMeasWindow is created.
+
+    Parameters
+    ----------
+    is_cal : bool
+        True if calibrating; False if taking a measurement to save.
+
+    """
+
     def __init__(self, is_cal):
         tkinter.Toplevel.__init__(self)
         self.title("Take a Measurement")
@@ -45,22 +88,49 @@ class MeasurementWindow(tkinter.Toplevel):
             self.toplevel_for_title = tkinter.Toplevel(self)
             self.toplevel_for_title.title("Title Selection")
             self.title_label_text = "Please enter a title for the results."
-            self.title_label = tkinter.Label(self.toplevel_for_title, text=self.title_label_text)
+            self.title_label = tkinter.Label(self.toplevel_for_title,
+                                             text=self.title_label_text)
             self.title_label.pack()
             self.title_entry = tkinter.Entry(self.toplevel_for_title)
             self.title_entry.pack()
-            self.title_button = tkinter.Button(self.toplevel_for_title, text="Continue", command=self.choose_title)
+            self.title_button = tkinter.Button(self.toplevel_for_title, text="Continue",
+                                               command=self.choose_title)
             self.title_button.pack()
+
+
     def choose_title(self):
+        """When the user has selected a title, re-display self."""
+
         self.data_title = self.title_entry.get()
         self.toplevel_for_title.destroy()
         self.deiconify()
+
+
     def move_to_blank(self):
+        """Destroy the window and initialize a BlankMeasWindow.  Note that the
+        BlankMeasWindow's initialization involves taking an image.
+
+        """
+
         self.destroy()
         BlankMeasWindow(self.is_cal, self.data_title)
 
 
 class BlankMeasWindow(tkinter.Toplevel):
+    """Window for measuring a blank.
+
+    The BlankMeasWindow is created by a MeasurementWindow.  After using a BlankMeasWindow,
+    the blank is measured and a SampleMeasWindow is created.
+
+    Parameters
+    ----------
+    is_cal : bool
+        True if calibrating; False if taking a measurement to save.
+    data_title : string
+        The title of the graph to be created.
+
+    """
+
     def __init__(self, is_cal, data_title):
         tkinter.Toplevel.__init__(self)
         self.title("Take a Measurement")
@@ -73,12 +143,35 @@ class BlankMeasWindow(tkinter.Toplevel):
         self.button_for_reading = tkinter.Button(self, text="\t\tMeasure Sample\t\t",
                                                  command=self.move_to_sample)
         self.button_for_reading.pack()
+
+
     def move_to_sample(self):
+        """Destroy the window and initialize a SampleMeasWindow.  Note that the
+        SampleMeasWindow's initialization involves taking an image.
+
+        """
+
         self.destroy()
         SampleMeasWindow(self.is_cal, self.blank_row, self.data_title)
 
 
 class SampleMeasWindow(tkinter.Toplevel):
+    """Window for measuring a sample.
+
+    The SampleMeasWindow is created by a BlankMeasWindow.  After using a SampleMeasWindow,
+    the sample is measured and a FinishCalibrationWindow or FinishSampleWindow is created.
+
+    Parameters
+    ----------
+    is_cal : bool
+        True if calibrating; False if taking a measurement to save.
+    blank_row : 1D list or numpy array
+        The data points from when the blank was measured.
+    data_title : string
+        The title of the graph to be created.
+
+    """
+
     def __init__(self, is_cal, blank_row, data_title):
         tkinter.Toplevel.__init__(self)
         self.title("Take a Measurement")
@@ -101,6 +194,21 @@ class SampleMeasWindow(tkinter.Toplevel):
 
 
 class FinishCalibrationWindow(tkinter.Toplevel):
+    """Window for finishing the calibration process.
+
+    The FinishCalibrationWindow is created by a SampleMeasWindow.  It displays a
+    graph, and allows the user to specify the minimum and maximum points on the
+    x-axis.
+
+    Parameters
+    ----------
+    sample_row : 1D list or numpy array
+        The data points from when the sample was measured.
+    blank_row : 1D list or numpy array
+        The data points from when the blank was measured.
+
+    """
+
     def __init__(self, sample_row, blank_row):
         tkinter.Toplevel.__init__(self)
         self.title("Calibrate the x axis")
@@ -138,6 +246,12 @@ class FinishCalibrationWindow(tkinter.Toplevel):
 
 
     def update_cal(self):
+        """Called when the user presses the update button.  Gets and saves the new
+        values for the calibration that were entered into the window.  Updates the graph
+        on the screen.
+
+        """
+
         min_val_entered = self.cal_min_entry.get()
         max_val_entered = self.cal_max_entry.get()
         app.update_cal(min_val_entered, max_val_entered, self.sample_row, self.blank_row)
@@ -147,6 +261,13 @@ class FinishCalibrationWindow(tkinter.Toplevel):
 
 
 class FinishSampleWindow(tkinter.Toplevel):
+    """Window for finishing the process of measuring a sample.
+
+    The FinishSampleWindow is created by a SampleMeasWindow.  It displays a
+    graph, and allows the user to save the data if desired.
+
+    """
+
     def __init__(self, data):
         self.data = data
         tkinter.Toplevel.__init__(self)
@@ -167,18 +288,31 @@ class FinishSampleWindow(tkinter.Toplevel):
 
 
     def save_result(self):
+        """Begin the process of saving the graph and csv file.  This function
+        initializes a window containing a button; when the user presses the button,
+        self.save_graph() is called.
+
+        """
+
         save_graph_title = "Select Location To Save Graph"
         self.save_graph_toplevel = tkinter.Toplevel(self)
         self.save_graph_toplevel.title(save_graph_title)
         label_save_graph_text = "First, select a location to save the graph."
-        self.label_save_graph = tkinter.Label(self.save_graph_toplevel, text=label_save_graph_text)
+        self.label_save_graph = tkinter.Label(self.save_graph_toplevel,
+                                              text=label_save_graph_text)
         self.label_save_graph.pack()
-        self.button_save_graph = tkinter.Button(self.save_graph_toplevel, text="Select Location For Graph",
+        self.button_save_graph = tkinter.Button(self.save_graph_toplevel,
+                                                text="Select Location For Graph",
                                                 command=self.save_graph)
         self.button_save_graph.pack()
 
 
     def save_graph(self):
+        """Ask the user where to save the graph.  Save it, and
+        call self.save_data_intro().
+
+        """
+
         self.save_graph_toplevel.destroy()
         sample_graph_loc = tkinter.filedialog.asksaveasfilename()
         if sample_graph_loc != "":
@@ -187,26 +321,37 @@ class FinishSampleWindow(tkinter.Toplevel):
 
 
     def save_data_intro(self):
+        """Initialize a window informing the user that it is time to save the csv file.
+        When the user presses a button, call self.save_data().
+
+        """
+
         save_data_title = "Select Location To Save Data"
         self.save_data_toplevel = tkinter.Toplevel(self)
         self.save_data_toplevel.title(save_data_title)
         label_save_data_text = "Next, select a location to save the data as a csv file."
-        self.label_save_data = tkinter.Label(self.save_data_toplevel, text=label_save_data_text)
+        self.label_save_data = tkinter.Label(self.save_data_toplevel,
+                                             text=label_save_data_text)
         self.label_save_data.pack()
-        self.button_save = tkinter.Button(self.save_data_toplevel, text="Select Location For CSV",
-                                                  command=self.save_data)
+        self.button_save = tkinter.Button(self.save_data_toplevel,
+                                          text="Select Location For CSV",
+                                          command=self.save_data)
         self.button_save.pack()
 
 
     def save_data(self):
+        """Ask the user where to save the csv file.  Save the file."""
+
         self.save_data_toplevel.destroy()
         sample_data_loc = tkinter.filedialog.asksaveasfilename()
         if sample_data_loc != "":
             cal = get_cal()
             wavelength_step = (cal["max"] - cal["min"]) / len(self.data)
-            wavelength_array = np.arange(cal["min"], cal["max"]+wavelength_step, step=wavelength_step)
+            wavelength_array = np.arange(cal["min"], cal["max"]+wavelength_step,
+                                         step=wavelength_step)
             with open(sample_data_loc, mode="w") as csv_file:
-                csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"',
+                                        quoting=csv.QUOTE_MINIMAL)
                 csv_writer.writerow(["Wavelength (nm)", "Absorbance"])
                 for i in range(len(self.data)):
                     csv_writer.writerow([wavelength_array[i], self.data[i]])
@@ -214,6 +359,13 @@ class FinishSampleWindow(tkinter.Toplevel):
 
 
 class LocateSpectrumWindow(tkinter.Toplevel):
+    """Window for locating the diffraction spectrum.
+
+    The LocateSpectrumWindow displays an image taken by the camera.  The user
+    enters the location (in pixels) of the diffraction spectrum.
+
+    """
+
     def __init__(self):
         tkinter.Toplevel.__init__(self)
         self.title("Diffraction Spectrum Location")
@@ -263,10 +415,21 @@ class LocateSpectrumWindow(tkinter.Toplevel):
         self.menu_canvas.pack()
 
     def cal_after_loc(self):
+        """After the user has located the spectrum, it is necessary to calibrate the
+        x-axis.  Destroy the top-level and initialize a MeasurementWindow with
+        is_cal=True in order to calibrate the axis.
+
+        """
+
         self.destroy()
         MeasurementWindow(True)
 
     def update_loc_from_gui(self):
+        """Called when the user enters a location of the spectrum.  The displayed
+        image draws a line where the spectrum is said to be, and loc.json is updated.
+
+        """
+
         try:
             new_x = int(self.x_loc_entry.get())
             new_y = int(self.y_loc_entry.get())
@@ -282,8 +445,12 @@ class LocateSpectrumWindow(tkinter.Toplevel):
                 line_b = new_y + new_length
                 line_l_edge = max(new_x-5, 0)
                 line_r_edge = min(new_x+5, self.image_line_array.shape[1])
-                self.image_line_array[line_t : line_b, line_l_edge : line_r_edge] = np.array([255, 0, 0])
-                self.image_line_tk = ImageTk.PhotoImage(image=Image.fromarray(self.image_line_array))
+
+                # Draw a red line where the location is.
+                self.image_line_array[line_t : line_b,\
+                                      line_l_edge : line_r_edge] = np.array([255, 0, 0])
+                image_pil = Image.fromarray(self.image_line_array)
+                self.image_line_tk = ImageTk.PhotoImage(image=image_pil)
                 self.panel_loc.configure(image=self.image_line_tk)
                 self.panel_loc.image = self.image_line_tk
             else:
@@ -293,6 +460,8 @@ class LocateSpectrumWindow(tkinter.Toplevel):
 
 
     def complain_bad_loc_val(self):
+        """Display an error message is the user provides invalid input."""
+
         toplevel_for_complaint = tkinter.Toplevel(self)
         toplevel_for_complaint.title("Error: Bad Input!")
         complaint_text = ("Either a value isn't an integer, or the position goes beyond "
@@ -306,7 +475,8 @@ class LocateSpectrumWindow(tkinter.Toplevel):
 
 
 class SpecApp(tkinter.Tk):
-    def __init__(self, *args, **kwargs):
+    """Toplevel class that is initialized when the app starts."""
+    def __init__(self):
         tkinter.Tk.__init__(self, *args, **kwargs) # Initialize tkinter.
         # Display a window when the program starts.
         self.title("Main Menu")
@@ -327,6 +497,12 @@ class SpecApp(tkinter.Tk):
 
 
     def update_cal(self, new_min_string, new_max_string, sample_row, blank_row):
+        """Update cal.json with new calibration values.  Update the calibration
+        graph at out.png.  Note that this function doesn't display the new graph.
+        It is called by a FinishCalibrationWindow object that updates the window.
+
+        """
+
         try:
             new_min = float(new_min_string)
             new_max = float(new_max_string)
@@ -346,6 +522,8 @@ class SpecApp(tkinter.Tk):
 
 
     def complain_bad_cal_val(self):
+        """Display an error message is the user provides invalid input."""
+
         toplevel_for_complaint = tkinter.Toplevel(self)
         toplevel_for_complaint.title("Error: Bad Input!")
         complaint_text = ("Either a value isn't a number, or the minimum is greater than "
