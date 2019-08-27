@@ -39,6 +39,7 @@ the spectrum with the sample to the spectrum without the sample.  This software 
    * Another window will appear.  Place the sample in the spectrophotometer, and close the lid.  When the button is presses, the machine
 will measure the sample.
    * A graph of the results will appear.  It is possible to save the graph, and to save a csv file of the data.  Click the button to do this.
+
 ##Troubleshooting
 * When the spectrophotometer is used for the first time, the spectrum may not show up.  If this happens, it is necessary to adjust the device until
 the issue is fixed.  Running `python3 show_video.py` will open a window with a video feed from the camera.  The window only lasts 2 minutes; if more
