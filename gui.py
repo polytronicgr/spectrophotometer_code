@@ -477,7 +477,7 @@ class LocateSpectrumWindow(tkinter.Toplevel):
 class SpecApp(tkinter.Tk):
     """Toplevel class that is initialized when the app starts."""
     def __init__(self):
-        tkinter.Tk.__init__(self, *args, **kwargs) # Initialize tkinter.
+        tkinter.Tk.__init__(self) # Initialize tkinter.
         # Display a window when the program starts.
         self.title("Main Menu")
 
