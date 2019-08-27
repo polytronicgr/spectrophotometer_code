@@ -5,6 +5,7 @@ The code can be cloned from this github repository.  Running the code requires t
 * numpy
 * matplotlib
 * PIL (including ImageTk)
+
 To install them, run the following:
 ```
 pip3 install numpy
@@ -19,25 +20,25 @@ You may be prompted to enter your password; this is because of the `sudo` comman
 in the camera's field of view.  To find it, click "Locate the Spectrum Then Calibrate the Axes".  An image will
 appear.  The bottom will contain a white rectangle; this is the slit.  Above the slit will be a rainbow-like region
 that is the diffraction spectrum.  Edit the values in the window until the red line is on the spectrum.
-* The y-axis points downwards; the x-axis points to the right.  So higher numbers are towards the bottom right
+   * The y-axis points downwards; the x-axis points to the right.  So higher numbers are towards the bottom right
 corner.
-* The line should cover most of the spectrum.  But it shouldn't extend beyond the spectrum.
-* If a diffraction spectrum isn't visible, then the hardware isn't functioning correctly.  Is the diffraction grating
+   * The line should cover most of the spectrum.  But it shouldn't extend beyond the spectrum.
+   * If a diffraction spectrum isn't visible, then the hardware isn't functioning correctly.  Is the diffraction grating
 in a vertical orientation?  Is the LED in line with the slit?
 3. After finding the slit, it is necessary to calibrate the spectrophotometer.  This means finding which points in the
 spectrum's graph correspond to which wavelengths.  This is often done by shining light with a known wavelength (i.e. a laser)
 into the spectrophotometer.  Because lasers are expensive and dangerous, this spectrophotometer uses a different procedure:
-* The user measures a sample with a known spectrum.  Extra virgin olive oil works well for this because its spectrum is available
+   * The user measures a sample with a known spectrum.  Extra virgin olive oil works well for this because its spectrum is available
 online.
-* The user is shown a graph of the measured spectrum, and prompted to choose the minimum and maximum values of the x-axis.  This is done
+   * The user is shown a graph of the measured spectrum, and prompted to choose the minimum and maximum values of the x-axis.  This is done
 by visually comparing the measured spectrum to the known spectrum.
 4. Before taking a measurement, it is necessary to take a "blank" measurement with no sample.  This is so that the software can compare
 the spectrum with the sample to the spectrum without the sample.  This software requires users to measure a blank before each sample measurement.
-* To measure the blank and sample, click the "Take Blank and Sample Measurement" button.
-* A window will appear; when the button is clicked, the machine will measure the blank.
-* Another window will appear.  Place the sample in the spectrophotometer, and close the lid.  When the button is presses, the machine
+   * To measure the blank and sample, click the "Take Blank and Sample Measurement" button.
+   * A window will appear; when the button is clicked, the machine will measure the blank.
+   * Another window will appear.  Place the sample in the spectrophotometer, and close the lid.  When the button is presses, the machine
 will measure the sample.
-* A graph of the results will appear.  It is possible to save the graph, and to save a csv file of the data.  Click the button to do this.
+   * A graph of the results will appear.  It is possible to save the graph, and to save a csv file of the data.  Click the button to do this.
 ##Troubleshooting
 * When the spectrophotometer is used for the first time, the spectrum may not show up.  If this happens, it is necessary to adjust the device until
 the issue is fixed.  Running `python3 show_video.py` will open a window with a video feed from the camera.  The window only lasts 2 minutes; if more
