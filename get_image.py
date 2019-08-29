@@ -65,7 +65,8 @@ def get_bw_image():
     image_pil = Image.open("bw.png")
     image_arr_3 = np.array(image_pil)
 
-    image_arr = (image_arr_1 + image_arr_2 + image_arr_3) / 3
+    image_arr = (image_arr_1.astype(np.int16) + image_arr_2.astype(np.int16) + image_arr_3.astype(np.int16)) / 3
+    image_arr = image_arr.astype(np.uint8)
 
     camera.color_effects = None
     led.off()
