@@ -35,9 +35,12 @@ def get_color_image():
     return output
 
 def get_bw_image():
-    """Take a grayscale ("black and white") image using the camera.
-    Return as a numpy array.  I couldn't figure out the proper way
-    to do this, so the function saves the image as bw.png."""
+    """Return a numpy array of a grayscale image from the camera.
+    I couldn't figure out the proper way
+    to do this, so the function saves the image as bw.png.
+
+    The function takes 3 pictures and averages the values from
+    each picture.  This is done to reduce noise."""
 
     led = LED(4)
     led.on()
@@ -50,7 +53,19 @@ def get_bw_image():
     camera.color_effects = (128, 128)
     camera.capture("bw.png")
     image_pil = Image.open("bw.png")
-    image_arr = np.array(image_pil)
+    image_arr_1 = np.array(image_pil)
+
+    time.sleep(0.1)
+    camera.capture("bw.png")
+    image_pil = Image.open("bw.png")
+    image_arr_2 = np.array(image_pil)
+    
+    time.sleep(0.1)
+    camera.capture("bw.png")
+    image_pil = Image.open("bw.png")
+    image_arr_3 = np.array(image_pil)
+
+    image_arr = (image_arr_1 + image_arr_2 + image_arr_3) / 3
 
     camera.color_effects = None
     led.off()
