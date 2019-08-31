@@ -39,7 +39,7 @@ def get_bw_image():
     I couldn't figure out the proper way
     to do this, so the function saves the image as bw.png.
 
-    The function takes 3 pictures and averages the values from
+    The function takes multiple pictures and averages the values from
     each picture.  This is done to reduce noise."""
 
     led = LED(4)
@@ -65,7 +65,20 @@ def get_bw_image():
     image_pil = Image.open("bw.png")
     image_arr_3 = np.array(image_pil)
 
-    image_arr = (image_arr_1.astype(np.int16) + image_arr_2.astype(np.int16) + image_arr_3.astype(np.int16)) / 3
+    time.sleep(0.1)
+    camera.capture("bw.png")
+    image_pil = Image.open("bw.png")
+    image_arr_4 = np.array(image_pil)
+
+    time.sleep(0.1)
+    camera.capture("bw.png")
+    image_pil = Image.open("bw.png")
+    image_arr_5 = np.array(image_pil)
+
+
+    image_arr = (image_arr_1.astype(np.int16) + image_arr_2.astype(np.int16) + 
+                 image_arr_3.astype(np.int16) + image_arr_4.astype(np.int16) +
+                 image_arr_5.astype(np.int16)) / 5
     image_arr = image_arr.astype(np.uint8)
 
     camera.color_effects = None
